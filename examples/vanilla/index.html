@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wojak Wallet — Vanilla Example</title>
+    <style>
+      body {
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: #0e0e0e;
+        color: #eee;
+        max-width: 560px;
+        margin: 40px auto;
+        padding: 0 16px;
+      }
+      button {
+        background: #1d4ed8;
+        color: #fff;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 15px;
+        cursor: pointer;
+        margin: 4px 4px 4px 0;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      pre {
+        background: #161616;
+        border: 1px solid #262626;
+        border-radius: 10px;
+        padding: 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .row {
+        margin: 12px 0;
+      }
+      code {
+        color: #7dd3fc;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Wojak Wallet — Vanilla JS</h1>
+    <p>
+      This page talks to the injected <code>window.wojak</code> provider. No
+      build step. Install the Wojak Wallet extension, then click Connect.
+    </p>
+
+    <div class="row">
+      <button id="connect">Connect</button>
+      <button id="balance" disabled>Get balance</button>
+      <button id="sign" disabled>Sign message</button>
+      <button id="inscribe" disabled>Inscribe WJK-20 transfer</button>
+    </div>
+
+    <div class="row">
+      <strong>Status:</strong> <span id="status">not connected</span>
+    </div>
+    <pre id="out">—</pre>
+
+    <script type="module">
+      // In a real app: import { getWojakProvider } from "wojak-sdk";
+      // Here we inline the tiny detection logic so the example needs no build.
+      const out = document.getElementById("out");
+      const statusEl = document.getElementById("status");
+      const log = (v) =>
+        (out.textContent =
+          typeof v === "string" ? v : JSON.stringify(v, null, 2));
+
+      const getWojakProvider = (timeoutMs = 3000) => {
+        if (window.wojak) return Promise.resolve(window.wojak);
+        return new Promise((resolve) => {
+          const onReady = () => resolve(window.wojak);
+          window.addEventListener("wojak#initialized", onReady, {
+            once: true,
+          });
+          setTimeout(() => resolve(window.wojak), timeoutMs);
+        });
+      };
+
+      const textToHex = (s) =>
+        Array.from(new TextEncoder().encode(s))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+      let provider;
+      const enable = (on) =>
+        ["balance", "sign", "inscribe"].forEach(
+          (id) => (document.getElementById(id).disabled = !on)
+        );
+
+      document.getElementById("connect").onclick = async () => {
+        provider = await getWojakProvider();
+        if (!provider) {
+          statusEl.textContent = "Wojak Wallet not installed";
+          return log("Install the Wojak Wallet extension and reload.");
+        }
+        try {
+          const address = await provider.connect();
+          const network = await provider.getNetwork();
+          statusEl.textContent = `connected (${network})`;
+          enable(true);
+          log({ address, network });
+
+          provider.on("accountsChanged", (a) => log({ accountsChanged: a }));
+          provider.on("networkChanged", (n) => log({ networkChanged: n }));
+        } catch (e) {
+          log("connect rejected: " + (e?.message ?? e));
+        }
+      };
+
+      document.getElementById("balance").onclick = async () => {
+        const sats = await provider.getBalance();
+        log({ balanceSats: sats, balanceWJK: sats / 1e8 });
+      };
+
+      document.getElementById("sign").onclick = async () => {
+        try {
+          const sig = await provider.signMessage("Hello from Wojak SDK");
+          log({ signature: sig });
+        } catch (e) {
+          log("sign rejected: " + (e?.message ?? e));
+        }
+      };
+
+      document.getElementById("inscribe").onclick = async () => {
+        try {
+          const payload = {
+            p: "wjk-20",
+            op: "transfer",
+            tick: "wojak",
+            amt: "1",
+          };
+          const res = await provider.inscribe({
+            contentType: "text/plain;charset=utf-8",
+            dataHex: textToHex(JSON.stringify(payload)),
+            feeRate: 10,
+          });
+          log(res);
+        } catch (e) {
+          log("inscribe rejected: " + (e?.message ?? e));
+        }
+      };
+    </script>
+  </body>
+</html>

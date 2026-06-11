@@ -1,0 +1,69 @@
+{
+  "name": "wojak-sdk",
+  "version": "0.1.0",
+  "description": "Wojak Wallet Provider SDK — connect dapps to the WojakCoin (WJK) browser wallet.",
+  "author": "WojakCoin",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./provider": {
+      "types": "./dist/provider/index.d.ts",
+      "default": "./dist/provider/index.js"
+    },
+    "./provider-types": {
+      "types": "./dist/provider/types.d.ts",
+      "default": "./dist/provider/types.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p ./tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "wojakcoin",
+    "wjk",
+    "wjk-20",
+    "wallet",
+    "ordinals",
+    "inscriptions",
+    "web3",
+    "provider",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reallyshadydev/wojak-sdk.git"
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "react": "^18.3.1",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.5.3"
+  }
+}
