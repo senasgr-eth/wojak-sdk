@@ -5,9 +5,18 @@ export type { IWojakProvider } from "./provider";
 export * from "./provider/types";
 export * from "./types";
 
+/** Which extension brand injected the provider. */
+export type WalletBrand = "wojak" | "junkcoin";
+
+export interface DetectedProvider {
+  provider: IWojakProvider;
+  brand: WalletBrand;
+}
+
 declare global {
   interface Window {
     wojak?: IWojakProvider;
+    junkcoin?: IWojakProvider;
   }
 }
 
@@ -134,6 +143,84 @@ export async function sendBitcoinWithOpReturn(
   });
   return broadcastRawTx(options.electrsUrl, signedHex);
 }
+
+/**
+ * Synchronously detect any compatible provider (Wojak or Junkcoin).
+ * @param preferredBrand - if set, check that global first.
+ */
+export const detectProvider = (
+  preferredBrand?: WalletBrand,
+): DetectedProvider | undefined => {
+  if (typeof window === "undefined") return undefined;
+  if (preferredBrand === "junkcoin" && window.junkcoin)
+    return { provider: window.junkcoin, brand: "junkcoin" };
+  if (preferredBrand === "wojak" && window.wojak)
+    return { provider: window.wojak, brand: "wojak" };
+  if (window.wojak) return { provider: window.wojak, brand: "wojak" };
+  if (window.junkcoin) return { provider: window.junkcoin, brand: "junkcoin" };
+  return undefined;
+};
+
+/** Get all installed compatible providers. */
+export const getAllProviders = (): DetectedProvider[] => {
+  if (typeof window === "undefined") return [];
+  const results: DetectedProvider[] = [];
+  if (window.wojak) results.push({ provider: window.wojak, brand: "wojak" });
+  if (window.junkcoin)
+    results.push({ provider: window.junkcoin, brand: "junkcoin" });
+  return results;
+};
+
+/**
+ * Map a UTXO chain URI scheme (from .env JKC_URI_SCHEME) to the wallet brand.
+ * Returns undefined if unknown.
+ */
+export const uriSchemeToBrand = (
+  scheme: string | undefined,
+): WalletBrand | undefined => {
+  if (!scheme) return undefined;
+  const s = scheme.toLowerCase().trim();
+  if (s === "wojakcoin" || s === "wojak") return "wojak";
+  if (s === "junkcoin" || s === "jkc" || s === "junkcoin-testnet")
+    return "junkcoin";
+  return undefined;
+};
+
+/**
+ * Resolves once ANY compatible provider (Wojak or Junkcoin) is injected.
+ * @param preferredBrand - prioritise this wallet when both are installed.
+ */
+export const getAnyProvider = (
+  timeoutMs = 3000,
+  preferredBrand?: WalletBrand,
+): Promise<DetectedProvider | undefined> => {
+  if (typeof window === "undefined") return Promise.resolve(undefined);
+  const immediate = detectProvider(preferredBrand);
+  if (immediate) return Promise.resolve(immediate);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result?: DetectedProvider) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("wojak#initialized", onWojak);
+      window.removeEventListener("junkcoin#initialized", onJunkcoin);
+      resolve(result);
+    };
+    const onWojak = () => {
+      if (window.wojak) finish({ provider: window.wojak, brand: "wojak" });
+    };
+    const onJunkcoin = () => {
+      if (window.junkcoin)
+        finish({ provider: window.junkcoin, brand: "junkcoin" });
+    };
+    window.addEventListener("wojak#initialized", onWojak, { once: true });
+    window.addEventListener("junkcoin#initialized", onJunkcoin, {
+      once: true,
+    });
+    setTimeout(() => finish(detectProvider(preferredBrand)), timeoutMs);
+  });
+};
 
 /**
  * Resolves once the provider is injected (it loads asynchronously). Useful at
