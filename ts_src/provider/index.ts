@@ -1,6 +1,7 @@
-import type { Address, NetworkType, WojakEvent } from "../types";
+import type { Address, NetworkType, Utxo, WojakEvent } from "../types";
 import type {
   CreateTxPayload,
+  SendWithOpReturnOptions,
   InscribeBatchResult,
   InscribePayload,
   InscribeResult,
@@ -47,10 +48,40 @@ export interface IWojakProvider {
   getVersion(): Promise<string>;
 
   /**
-   * Build a funded, signed payment transaction (not broadcast).
-   * @returns the raw transaction hex.
+   * Build a funded, signed payment transaction and return the raw tx hex.
+   * The transaction is NOT broadcast — call {@link broadcastRawTx} to push it.
+   *
+   * Pass `opReturn` + `opReturnIsHex: true` to embed an OP_RETURN output
+   * (e.g. a 40-hex EVM address for bridge routing). The wallet shows the
+   * OP_RETURN data in its confirmation UI before the user approves.
    */
   createTx(data: CreateTxPayload): Promise<string>;
+
+  /**
+   * Send `satoshis` to `toAddress` with a mandatory OP_RETURN output and
+   * broadcast the transaction — a single atomic wallet-approved operation.
+   *
+   * `opReturnPayload` must be a 40-character hex string (raw 20-byte EVM
+   * address, no `0x` or `6a14` prefix). The on-chain script will be:
+   * `OP_RETURN OP_DATA20 <payload>` → `6a14<payload>`.
+   *
+   * @returns the broadcast txid.
+   */
+  sendWithOpReturn(
+    toAddress: string,
+    satoshis: number,
+    opReturnPayload: string,
+    options?: SendWithOpReturnOptions
+  ): Promise<string>;
+
+  /** Return the UTXOs currently controlled by the connected account. */
+  getUtxos(): Promise<Utxo[]>;
+
+  /**
+   * Broadcast a fully-signed raw transaction hex.
+   * @returns the txid.
+   */
+  broadcastTx(rawHex: string): Promise<string>;
 
   /** Estimate the fee (sats) for a raw tx hex at a given fee rate. */
   calculateFee(hex: string, feeRate: number): Promise<number>;

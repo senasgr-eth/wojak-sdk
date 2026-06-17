@@ -7,6 +7,31 @@ export interface CreateTxPayload {
   amount: number;
   receiverToPayFee: boolean;
   feeRate: number;
+  /**
+   * Optional OP_RETURN payload to embed in the transaction output.
+   *
+   * When `opReturnIsHex` is `true` (recommended for EVM address routing),
+   * the wallet binary-decodes this string and produces on-chain:
+   * `OP_RETURN OP_DATA20 <20 bytes>` → scriptPubKey `6a14<opReturn>`.
+   *
+   * When `opReturnIsHex` is `false` or omitted the string is UTF-8 encoded.
+   *
+   * Pass the raw 40-hex EVM address (no `0x` or `6a14` prefix).
+   */
+  opReturn?: string;
+  /** Treat `opReturn` as hex bytes rather than UTF-8 text. Defaults to `false`. */
+  opReturnIsHex?: boolean;
+}
+
+/**
+ * Options for {@link IWojakProvider.sendWithOpReturn}.
+ * The wallet builds the transaction, appends a bare OP_RETURN output whose
+ * script is `OP_RETURN OP_DATA20 <payload>` (`6a14<40-hex>`), signs, and
+ * broadcasts it in a single atomic operation.
+ */
+export interface SendWithOpReturnOptions {
+  /** sat/vbyte fee rate; extension uses its default when omitted. */
+  feeRate?: number;
 }
 
 interface BaseUserToSignInput {

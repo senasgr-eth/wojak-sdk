@@ -23,3 +23,15 @@ export type WojakEvent =
   | "close"
   | "accountsChanged"
   | "networkChanged";
+
+/** A UTXO entry returned by {@link IWojakProvider.getUtxos}. */
+export interface Utxo {
+  txid: Txid;
+  vout: number;
+  /** Value in satoshis. */
+  satoshis: number;
+  /** Raw scriptPubKey hex, if the wallet provides it. */
+  scriptPubKey?: string;
+  /** Confirmation count. 0 = mempool. */
+  confirmations?: number;
+}
